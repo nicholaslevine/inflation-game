@@ -36,7 +36,14 @@ BUTTON_EDGE = (155, 118, 84)
 
 @lru_cache(maxsize=64)
 def get_font(size: int, bold: bool = False) -> pygame.font.Font:
-    candidates = ("bahnschrift", "trebuchetms", "verdana", "arial")
+    candidates = (
+        "noto sans",
+        "source sans pro",
+        "ubuntu",
+        "dejavusans",
+        "liberation sans",
+        "trebuchetms",
+    )
     for name in candidates:
         if pygame.font.match_font(name):
             return pygame.font.SysFont(name, size, bold=bold)

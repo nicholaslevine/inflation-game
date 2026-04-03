@@ -88,17 +88,17 @@ def run_game() -> None:
     pending_event_alerts = []
     current_event_alert = 0
 
-    def set_interest(value: int) -> None:
-        pending_policy.interest_rate = max(-1, min(1, value))
+    def set_interest(value: float) -> None:
+        pending_policy.interest_rate = max(-1.0, min(1.0, value))
 
-    def set_tax(value: int) -> None:
-        pending_policy.tax_rate = max(-1, min(1, value))
+    def set_tax(value: float) -> None:
+        pending_policy.tax_rate = max(-1.0, min(1.0, value))
 
-    def set_spending(value: int) -> None:
-        pending_policy.government_spending = max(-1, min(1, value))
+    def set_spending(value: float) -> None:
+        pending_policy.government_spending = max(-1.0, min(1.0, value))
 
-    def set_liquidity(value: int) -> None:
-        pending_policy.emergency_liquidity = max(-1, min(1, value))
+    def set_liquidity(value: float) -> None:
+        pending_policy.emergency_liquidity = max(-1.0, min(1.0, value))
 
     def end_year() -> None:
         nonlocal last_result, pending_policy, show_year_summary, pending_event_alerts, current_event_alert

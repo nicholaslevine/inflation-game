@@ -74,8 +74,8 @@ class Button:
 
         if self.hotkey is not None:
             key = pygame.key.name(self.hotkey).upper()
-            hint = get_font(13, bold=True).render(key, True, (214, 180, 137))
-            hint_rect = hint.get_rect(topright=(self.rect.right - 8, self.rect.y + 7))
+            hint = get_font(12, bold=True).render(key, True, (214, 180, 137))
+            hint_rect = hint.get_rect(bottomright=(self.rect.right - 9, self.rect.bottom - 7))
             screen.blit(hint, hint_rect)
 
     def handle_event(self, event: pygame.event.Event) -> bool:
@@ -93,16 +93,16 @@ class Button:
 class Slider:
     rect: pygame.Rect
     label: str
-    get_value: Callable[[], int]
-    set_value: Callable[[int], None]
+    get_value: Callable[[], float]
+    set_value: Callable[[float], None]
     hotkey_down: int | None = None
     hotkey_up: int | None = None
     dragging: bool = False
 
-    def _value_from_mouse_x(self, x: int) -> int:
+    def _value_from_mouse_x(self, x: int) -> float:
         rel = (x - self.rect.x) / max(1, self.rect.width)
-        snapped = int(round(rel * 2.0)) - 1
-        return max(-1, min(1, snapped))
+        continuous = (rel * 2.0) - 1.0
+        return max(-1.0, min(1.0, continuous))
 
     def draw(self, screen: pygame.Surface, mouse_pos: tuple[int, int]) -> None:
         hovered = self.rect.collidepoint(mouse_pos)
@@ -120,14 +120,12 @@ class Slider:
             pygame.draw.line(screen, TEXT_COLOR, (tx, y_mid - 8), (tx, y_mid + 8), 2)
 
         value = self.get_value()
-        knob_x = tick_positions[value + 1]
+        knob_x = int(x_left + ((value + 1.0) * 0.5) * (x_right - x_left))
         knob_color = ACCENT_COLOR if value > 0 else BAD_COLOR if value < 0 else WARN_COLOR
+        center_x = tick_positions[1]
+        pygame.draw.line(screen, knob_color, (center_x, y_mid), (knob_x, y_mid), 4)
         pygame.draw.circle(screen, knob_color, (knob_x, y_mid), 11)
         pygame.draw.circle(screen, (20, 16, 14), (knob_x, y_mid), 11, 2)
-
-        value_text = {1: "RAISE", 0: "HOLD", -1: "LOWER"}[value]
-        text = get_font(14, bold=True).render(value_text, True, knob_color)
-        screen.blit(text, (self.rect.right + 2, self.rect.y + 8))
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.rect.collidepoint(event.pos):
@@ -141,10 +139,10 @@ class Slider:
             return True
         if event.type == pygame.KEYDOWN:
             if self.hotkey_down is not None and event.key == self.hotkey_down:
-                self.set_value(max(-1, self.get_value() - 1))
+                self.set_value(max(-1.0, self.get_value() - 0.1))
                 return True
             if self.hotkey_up is not None and event.key == self.hotkey_up:
-                self.set_value(min(1, self.get_value() + 1))
+                self.set_value(min(1.0, self.get_value() + 0.1))
                 return True
         return False
 
@@ -197,13 +195,16 @@ def _draw_panel(
     fill: tuple[int, int, int] = PANEL_COLOR,
     border: tuple[int, int, int] = PANEL_EDGE,
     radius: int = 16,
+    show_highlight: bool = True,
 ) -> None:
     panel = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
     panel.fill((0, 0, 0, 0))
     pygame.draw.rect(panel, (*fill, 230), (0, 0, rect.width, rect.height), border_radius=radius)
     pygame.draw.rect(panel, (*border, 255), (0, 0, rect.width, rect.height), width=2, border_radius=radius)
-    highlight = pygame.Rect(3, 3, rect.width - 6, 10)
-    pygame.draw.rect(panel, (194, 166, 131, 24), highlight, border_radius=10)
+    if show_highlight and rect.width > 10 and rect.height > 8:
+        highlight_h = min(10, rect.height - 6)
+        highlight = pygame.Rect(3, 3, rect.width - 6, highlight_h)
+        pygame.draw.rect(panel, (194, 166, 131, 24), highlight, border_radius=10)
     screen.blit(panel, rect.topleft)
 
 
@@ -217,7 +218,7 @@ def metric_color(value: float, good_min: float | None, bad_max: float | None) ->
 
 def get_ui_layout() -> dict[str, pygame.Rect]:
     margin = 20
-    header = pygame.Rect(margin, margin, SCREEN_WIDTH - 2 * margin, 136)
+    header = pygame.Rect(margin, margin, SCREEN_WIDTH - 2 * margin, 152)
     cards = pygame.Rect(margin, header.bottom + 16, SCREEN_WIDTH - 2 * margin, 136)
     strip = pygame.Rect(margin, cards.bottom + 12, SCREEN_WIDTH - 2 * margin, 64)
     lower_y = strip.bottom + 18
@@ -232,18 +233,34 @@ def get_ui_layout() -> dict[str, pygame.Rect]:
 def _draw_header(screen: pygame.Surface, state: GameState, rect: pygame.Rect) -> None:
     _draw_panel(screen, rect, radius=18)
 
-    title = get_font(44, bold=True).render("Federal Reserve Crisis Desk", True, TEXT_COLOR)
-    subtitle = get_font(21).render(
-        "America is brittle. Every move can deepen unrest, defaults, and bank failures.",
-        True,
-        MUTED_TEXT,
-    )
-    era = get_font(20, bold=True).render("Campaign Window: 1920-1935", True, ACCENT_COLOR)
+    left_x = rect.x + 22
+    risk_rect = pygame.Rect(rect.right - 370, rect.y + 12, 350, rect.height - 24)
+    content_max_w = max(240, risk_rect.left - left_x - 20)
 
-    screen.blit(title, (rect.x + 22, rect.y + 20))
-    screen.blit(subtitle, (rect.x + 22, rect.y + 70))
-    screen.blit(era, (rect.x + 22, rect.y + 102))
-    _draw_risk_widget(screen, state, pygame.Rect(rect.right - 370, rect.y + 10, 350, rect.height - 20))
+    title_font = get_font(44, bold=True)
+    subtitle_font = get_font(21)
+    era_font = get_font(20, bold=True)
+
+    title = title_font.render("Federal Reserve Crisis Desk", True, TEXT_COLOR)
+    subtitle_lines = _wrap_text(
+        "America is brittle. Every move can deepen unrest, defaults, and bank failures.",
+        subtitle_font,
+        content_max_w,
+    )
+    era = era_font.render("Campaign Window: 1920-1935", True, ACCENT_COLOR)
+
+    title_y = rect.y + 16
+    screen.blit(title, (left_x, title_y))
+
+    subtitle_y = title_y + title.get_height() + 2
+    for line in subtitle_lines[:2]:
+        screen.blit(subtitle_font.render(line, True, MUTED_TEXT), (left_x, subtitle_y))
+        subtitle_y += subtitle_font.get_linesize() - 2
+
+    era_y = rect.bottom - era.get_height() - 14
+    screen.blit(era, (left_x, era_y))
+
+    _draw_risk_widget(screen, state, risk_rect)
 
 
 def _draw_risk_widget(screen: pygame.Surface, state: GameState, rect: pygame.Rect) -> None:
@@ -271,7 +288,7 @@ def _draw_risk_widget(screen: pygame.Surface, state: GameState, rect: pygame.Rec
     title_y = rect.y + 8
     year_y = rect.y + 26
     risk_y = rect.y + 34
-    delta_y = rect.y + (56 if compact else 64)
+    delta_y = rect.y + (53 if compact else 61)
     bar.y = rect.y + (74 if compact else 92)
     deadline_y = rect.y + (94 if compact else 112)
 
@@ -358,12 +375,12 @@ def draw_state_cards(screen: pygame.Surface, state: GameState, layout: dict[str,
     screen.blit(get_font(18).render(detail, True, MUTED_TEXT), (strip.x + 12, strip.y + 36))
 
 
-def _pending_label(value: int) -> tuple[str, tuple[int, int, int]]:
-    if value > 0:
-        return "RAISE", ACCENT_COLOR
-    if value < 0:
-        return "LOWER", BAD_COLOR
-    return "HOLD", WARN_COLOR
+def _pending_label(value: float) -> tuple[str, tuple[int, int, int]]:
+    if value >= 0.08:
+        return f"RAISE {value:+.2f}", ACCENT_COLOR
+    if value <= -0.08:
+        return f"LOWER {value:+.2f}", BAD_COLOR
+    return "HOLD +0.00", WARN_COLOR
 
 
 def draw_policy_panel(
@@ -379,7 +396,7 @@ def draw_policy_panel(
     _draw_panel(screen, rect)
     screen.blit(get_font(30, bold=True).render("Policy Directives", True, TEXT_COLOR), (x + 16, y + 14))
     screen.blit(
-        get_font(18).render("Set each policy with sliders (-1 lower, 0 hold, +1 raise).", True, MUTED_TEXT),
+        get_font(18).render("Set each policy with continuous sliders (-1.00 to +1.00 stance).", True, MUTED_TEXT),
         (x + 16, y + 50),
     )
 
@@ -411,12 +428,12 @@ def draw_policy_panel(
         stat = f"Current level {current_level:.2f}    step {step}"
         screen.blit(get_font(20, bold=True).render(label, True, TEXT_COLOR), (x + 28, row_y - 1))
         screen.blit(get_font(16).render(stat, True, MUTED_TEXT), (x + 28, row_y + 23))
-        screen.blit(get_font(16, bold=True).render(f"{pending}", True, color), (x + w - 340, row_y + 1))
+        screen.blit(get_font(15, bold=True).render(f"{pending}", True, color), (x + w - 340, row_y + 2))
         screen.blit(get_font(15).render(f"Keys {keys}", True, ACCENT_COLOR), (x + w - 340, row_y + 24))
 
     controls = _policy_controls_layout(rect)
     hint_y = controls["row_1_y"] - 16
-    hint = get_font(16, bold=True).render("Controls: Drag sliders | Space End Year | N New Game | Esc Quit", True, MUTED_TEXT)
+    hint = get_font(16, bold=True).render("Controls: Drag sliders (or keys +/-0.10) | Space End Year | N New Game | Esc Quit", True, MUTED_TEXT)
     screen.blit(hint, (x + 16, hint_y))
 
 
@@ -517,7 +534,9 @@ def draw_log_panel(
         yy = lever_y0 + i * lever_gap
         row_rect = pygame.Rect(x + 16, yy - 6, w - 32, 26)
         _draw_panel(screen, row_rect, fill=(60, 49, 41), border=(131, 104, 81), radius=8)
-        screen.blit(get_font(18).render(row, True, ACCENT_COLOR), (row_rect.x + 9, yy - 2))
+        row_surf = get_font(18).render(row, True, ACCENT_COLOR)
+        row_text_rect = row_surf.get_rect(midleft=(row_rect.x + 9, row_rect.centery))
+        screen.blit(row_surf, row_text_rect)
 
     metric_rows = [
         ("Employment", preview["employment"]),
@@ -536,8 +555,12 @@ def draw_log_panel(
         row_rect = pygame.Rect(x + 16, yy - 7, w - 32, 30)
         _draw_panel(screen, row_rect, fill=(66, 50, 43), border=(136, 106, 86), radius=8)
         value_color = GOOD_COLOR if value > 0 else BAD_COLOR if value < 0 else WARN_COLOR
-        screen.blit(get_font(20, bold=True).render(label, True, TEXT_COLOR), (row_rect.x + 9, yy - 1))
-        screen.blit(get_font(20, bold=True).render(f"{value:+.2f}", True, value_color), (row_rect.right - 88, yy - 1))
+        label_surf = get_font(20, bold=True).render(label, True, TEXT_COLOR)
+        label_rect = label_surf.get_rect(midleft=(row_rect.x + 9, row_rect.centery))
+        screen.blit(label_surf, label_rect)
+        value_surf = get_font(20, bold=True).render(f"{value:+.2f}", True, value_color)
+        value_rect = value_surf.get_rect(midright=(row_rect.right - 10, row_rect.centery))
+        screen.blit(value_surf, value_rect)
 
     divider_y = min(metric_y0 + len(metric_rows) * metric_gap + 4, button_safe_top - 54)
     pygame.draw.line(screen, PANEL_EDGE, (x + 16, divider_y), (x + w - 16, divider_y), 2)
@@ -602,7 +625,7 @@ def draw_shock_event_popup(
     screen.blit(overlay, (0, 0))
 
     panel = pygame.Rect(110, 110, SCREEN_WIDTH - 220, SCREEN_HEIGHT - 220)
-    _draw_panel(screen, panel, fill=(60, 34, 30), border=(188, 96, 78), radius=20)
+    _draw_panel(screen, panel, fill=(60, 34, 30), border=(188, 96, 78), radius=20, show_highlight=False)
 
     screen.blit(get_font(22, bold=True).render(f"SHOCK ALERT {index}/{total}", True, BAD_COLOR), (panel.x + 28, panel.y + 22))
     screen.blit(get_font(52, bold=True).render(f"Year {year}", True, TEXT_COLOR), (panel.x + 28, panel.y + 56))
@@ -630,10 +653,14 @@ def draw_shock_event_popup(
             color = BAD_COLOR
         row_rect = pygame.Rect(panel.x + 28, yy - 4, panel.width - 56, 24)
         _draw_panel(screen, row_rect, fill=(70, 42, 36), border=(152, 87, 71), radius=7)
-        screen.blit(get_font(18, bold=True).render(label, True, TEXT_COLOR), (row_rect.x + 8, yy - 1))
+        label_surf = get_font(18, bold=True).render(label, True, TEXT_COLOR)
+        label_rect = label_surf.get_rect(midleft=(row_rect.x + 8, row_rect.centery))
+        screen.blit(label_surf, label_rect)
         suffix = "%" if label in {"Employment", "Inflation", "Debt / GDP", "Avoidance Odds"} else ""
         value = f"{delta:+.1f}{suffix}"
-        screen.blit(get_font(18, bold=True).render(value, True, color), (row_rect.right - 96, yy - 1))
+        value_surf = get_font(18, bold=True).render(value, True, color)
+        value_rect = value_surf.get_rect(midright=(row_rect.right - 8, row_rect.centery))
+        screen.blit(value_surf, value_rect)
 
     footer = "Press Space/Enter or click to acknowledge this event"
     screen.blit(get_font(22, bold=True).render(footer, True, ACCENT_COLOR), (panel.x + 28, panel.bottom - 74))
@@ -713,9 +740,18 @@ def draw_end_state(screen: pygame.Surface, state: GameState) -> None:
         body = "Timeline ended without immediate collapse, but systemic risk remains elevated."
         color = WARN_COLOR
 
+    body_max_width = card.width - 64
+    footer_max_width = card.width - 64
     screen.blit(get_font(52, bold=True).render(title, True, color), (card.x + 32, card.y + 46))
-    screen.blit(get_font(23).render(body, True, TEXT_COLOR), (card.x + 32, card.y + 138))
-    screen.blit(
-        get_font(21, bold=True).render("Press N to start a new run. Press Esc to quit.", True, MUTED_TEXT),
-        (card.x + 32, card.y + 214),
-    )
+    body_lines = _wrap_text(body, get_font(23), body_max_width)
+    body_y = card.y + 138
+    for line in body_lines[:3]:
+        screen.blit(get_font(23).render(line, True, TEXT_COLOR), (card.x + 32, body_y))
+        body_y += 30
+
+    footer = "Press N to start a new run. Press Esc to quit."
+    footer_lines = _wrap_text(footer, get_font(21, bold=True), footer_max_width)
+    footer_y = card.bottom - 92
+    for line in footer_lines[:2]:
+        screen.blit(get_font(21, bold=True).render(line, True, MUTED_TEXT), (card.x + 32, footer_y))
+        footer_y += 28

@@ -14,11 +14,12 @@ def clamp(value: float, low: float, high: float) -> float:
 
 @dataclass
 class PolicySelection:
-    # -1 = lower/decrease, 0 = hold, +1 = raise/increase
-    interest_rate: int = 0
-    tax_rate: int = 0
-    government_spending: int = 0
-    emergency_liquidity: int = 0
+    # Continuous stance per lever in [-1.0, 1.0]:
+    # -1.0 = lower/decrease, 0.0 = hold, +1.0 = raise/increase
+    interest_rate: float = 0.0
+    tax_rate: float = 0.0
+    government_spending: float = 0.0
+    emergency_liquidity: float = 0.0
 
 
 @dataclass
@@ -307,10 +308,17 @@ class GameState:
 
     @staticmethod
     def _summarize_policy(policy: PolicySelection) -> str:
-        rate_txt = {-1: "lowered", 0: "held", 1: "raised"}[policy.interest_rate]
-        tax_txt = {-1: "lowered", 0: "held", 1: "raised"}[policy.tax_rate]
-        spend_txt = {-1: "cut", 0: "held", 1: "increased"}[policy.government_spending]
-        loan_txt = {-1: "reduced", 0: "held", 1: "expanded"}[policy.emergency_liquidity]
+        def stance(value: float, low_word: str, hold_word: str, high_word: str) -> str:
+            if value <= -0.08:
+                return f"{low_word} ({value:+.2f})"
+            if value >= 0.08:
+                return f"{high_word} ({value:+.2f})"
+            return f"{hold_word} ({value:+.2f})"
+
+        rate_txt = stance(policy.interest_rate, "lowered", "held", "raised")
+        tax_txt = stance(policy.tax_rate, "lowered", "held", "raised")
+        spend_txt = stance(policy.government_spending, "cut", "held", "increased")
+        loan_txt = stance(policy.emergency_liquidity, "reduced", "held", "expanded")
         return (
             f"Rates {rate_txt}; taxes {tax_txt}; spending {spend_txt}; "
             f"emergency liquidity {loan_txt}."
