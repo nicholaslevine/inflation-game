@@ -8,11 +8,12 @@
   - Taxes
   - Government spending
   - Emergency bank liquidity/loans
-- Each year, probabilistic and historically grounded events may trigger (crash, bank runs, tariff shocks, Dust Bowl, etc.).
+- Each year, some historically grounded events may trigger (crash, bank runs, tariff shocks, Dust Bowl, etc.), which will most likely be detrimental by may be positive.
 - Goal: maximize your probability of avoiding a full depression by keeping:
   - Employment and reserves high
   - Inflation and debt in a controlled range
   - Banking system stable
+- Difficulty: This game is intentionally made to be very hard to win: only a few mistakes had to be made to cause the Great Depression, and we sought to replicate that here. 
 
 ## Run
 ```bash
