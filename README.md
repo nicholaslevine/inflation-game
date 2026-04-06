@@ -13,7 +13,7 @@
   - Employment and reserves high
   - Inflation and debt in a controlled range
   - Banking system stable
-- Difficulty: This game is intentionally made to be very hard to win: only a few mistakes had to be made to cause the Great Depression, and we sought to replicate that here. 
+- Difficulty: This game is intentionally made to be extremely hard to win: only a few mistakes had to be made to cause the Great Depression, and we sought to replicate that here. 
 
 ## Run
 ```bash
